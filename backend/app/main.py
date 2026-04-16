@@ -1,3 +1,5 @@
+from app.keygen import generate_answer_key, extract_points
+
 from fastapi import FastAPI
 
 app = FastAPI(
