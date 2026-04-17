@@ -1,6 +1,7 @@
 # db.py — MongoDB connection and helpers.
 
 from datetime import datetime, timezone
+from uuid import uuid4
 from pymongo import MongoClient
 
 # Import MONGODB_URI from config to guarantee .env was loaded first
@@ -9,6 +10,7 @@ from app.config import MONGODB_URI
 # --- Connect to MongoDB ---
 db = None
 results_collection = None
+questions_collection = None
 
 if not MONGODB_URI:
     print("⚠  MongoDB: skipping connection (no MONGODB_URI).")
@@ -18,6 +20,7 @@ else:
         client.admin.command("ping")
         db = client["ai_grader"]
         results_collection = db["results"]
+        questions_collection = db["questions"]
         print(f"✅ MongoDB connected — database: ai_grader, collection: results")
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")
@@ -77,3 +80,52 @@ def get_student_results(roll_no: str) -> list[dict]:
     except Exception as e:
         print(f"❌ Failed to fetch student results: {e}")
         return []
+
+
+def add_question(question: str, answer_key: list[str]) -> str | None:
+    """Insert a question with answer key and return its question_id."""
+    if questions_collection is None:
+        print("⚠  MongoDB not configured — question was NOT saved.")
+        return None
+
+    try:
+        question_id = str(uuid4())
+        questions_collection.insert_one(
+            {
+                "question_id": question_id,
+                "question": question,
+                "answer_key": answer_key,
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
+        return question_id
+    except Exception as e:
+        print(f"❌ Failed to add question: {e}")
+        return None
+
+
+def get_questions() -> list[dict]:
+    """Fetch all questions without answer keys."""
+    if questions_collection is None:
+        return []
+
+    try:
+        cursor = questions_collection.find({}, {"_id": 0, "question_id": 1, "question": 1}).sort(
+            "created_at", -1
+        )
+        return list(cursor)
+    except Exception as e:
+        print(f"❌ Failed to fetch questions: {e}")
+        return []
+
+
+def get_question_by_id(question_id: str) -> dict | None:
+    """Fetch one question document by question_id."""
+    if questions_collection is None:
+        return None
+
+    try:
+        return questions_collection.find_one({"question_id": question_id}, {"_id": 0})
+    except Exception as e:
+        print(f"❌ Failed to fetch question by id: {e}")
+        return None

@@ -7,6 +7,10 @@ const API_BASE = "http://127.0.0.1:8000";
 
 export default function TeacherDashboard() {
   const router = useRouter();
+  const [question, setQuestion] = useState("");
+  const [answerKeyText, setAnswerKeyText] = useState("");
+  const [questionLoading, setQuestionLoading] = useState(false);
+  const [questionMessage, setQuestionMessage] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -44,6 +48,46 @@ export default function TeacherDashboard() {
   function handleSearch(e) { e.preventDefault(); fetchResults(filterRoll.trim()); }
   function handleClear() { setFilterRoll(""); fetchResults(); }
   function handleLogout() { localStorage.removeItem("teacher_token"); router.push("/teacher/login"); }
+  async function handleAddQuestion(e) {
+    e.preventDefault();
+    setQuestionMessage("");
+
+    const questionText = question.trim();
+    const answerKey = answerKeyText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (!questionText) {
+      setQuestionMessage("Question is required.");
+      return;
+    }
+    if (answerKey.length === 0) {
+      setQuestionMessage("Answer key must include at least one point.");
+      return;
+    }
+
+    setQuestionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/add-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: questionText, answer_key: answerKey }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        throw new Error(d?.detail || `Server error (${res.status})`);
+      }
+      const data = await res.json();
+      setQuestion("");
+      setAnswerKeyText("");
+      setQuestionMessage(`Question added successfully. ID: ${data.question_id}`);
+    } catch (err) {
+      setQuestionMessage(err.message || "Could not add question.");
+    } finally {
+      setQuestionLoading(false);
+    }
+  }
 
   function scoreColor(s, m) {
     const p = (s / m) * 100;
@@ -93,6 +137,49 @@ export default function TeacherDashboard() {
             Log out
           </button>
         </header>
+
+        <section className="bg-card rounded-2xl border border-card-border shadow-lg shadow-black/10 overflow-hidden">
+          <div className="px-6 pt-5 pb-3 border-b border-card-border">
+            <h2 className="text-xs font-semibold uppercase tracking-[.15em] text-label flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              Add Question
+            </h2>
+          </div>
+          <form onSubmit={handleAddQuestion} className="px-6 py-5 space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="newQuestion" className="text-xs font-medium text-label">Question</label>
+              <input
+                id="newQuestion"
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Enter question"
+                className={`${inp} w-full`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="newAnswerKey" className="text-xs font-medium text-label">Answer Key (one point per line)</label>
+              <textarea
+                id="newAnswerKey"
+                rows={4}
+                value={answerKeyText}
+                onChange={(e) => setAnswerKeyText(e.target.value)}
+                placeholder={"Point 1\nPoint 2\nPoint 3"}
+                className={`${inp} w-full resize-y`}
+              />
+            </div>
+            {questionMessage && (
+              <p className="text-sm text-muted">{questionMessage}</p>
+            )}
+            <button
+              type="submit"
+              disabled={questionLoading}
+              className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition cursor-pointer disabled:opacity-50"
+            >
+              {questionLoading ? "Saving..." : "Add Question"}
+            </button>
+          </form>
+        </section>
 
         {/* ═══ Filter ═══ */}
         <form onSubmit={handleSearch} className="flex items-center gap-2">

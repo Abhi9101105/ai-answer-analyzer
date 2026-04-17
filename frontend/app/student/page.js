@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const API_BASE = "http://127.0.0.1:8000";
 
 export default function StudentPage() {
   const [name, setName] = useState("");
   const [rollNo, setRollNo] = useState("");
-  const [question, setQuestion] = useState("");
+  const [questionId, setQuestionId] = useState("");
   const [marks, setMarks] = useState("");
   const [answer, setAnswer] = useState("");
+  const [questions, setQuestions] = useState([]);
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,20 @@ export default function StudentPage() {
   const [histError, setHistError] = useState("");
   const [expandedHistId, setExpandedHistId] = useState(null);
 
+  useEffect(() => {
+    async function fetchQuestions() {
+      try {
+        const res = await fetch(`${API_BASE}/questions`);
+        if (!res.ok) throw new Error(`Server error (${res.status})`);
+        const data = await res.json();
+        setQuestions(data.questions || []);
+      } catch {
+        setQuestions([]);
+      }
+    }
+    fetchQuestions();
+  }, []);
+
   /* ─── Submit ─── */
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,7 +43,7 @@ export default function StudentPage() {
 
     if (!name.trim()) return setError("Name is required.");
     if (!rollNo.trim()) return setError("Roll number is required.");
-    if (!question.trim()) return setError("Question is required.");
+    if (!questionId.trim()) return setError("Please select a question.");
     if (!marks || parseInt(marks) <= 0)
       return setError("Marks must be greater than 0.");
     if (!answer.trim()) return setError("Answer is required.");
@@ -41,7 +56,7 @@ export default function StudentPage() {
         body: JSON.stringify({
           name: name.trim(),
           roll_no: rollNo.trim(),
-          question: question.trim(),
+          question_id: questionId.trim(),
           marks: parseInt(marks),
           answer: answer.trim(),
         }),
@@ -146,8 +161,19 @@ export default function StudentPage() {
             {/* Question */}
             <div className="space-y-1.5">
               <label htmlFor="question" className="text-xs font-medium text-label">Question</label>
-              <input id="question" type="text" placeholder="What is photosynthesis?"
-                value={question} onChange={e => setQuestion(e.target.value)} className={inp} />
+              <select
+                id="question"
+                value={questionId}
+                onChange={e => setQuestionId(e.target.value)}
+                className={inp}
+              >
+                <option value="">Select a question</option>
+                {questions.map((q) => (
+                  <option key={q.question_id} value={q.question_id}>
+                    {q.question}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Marks */}
