@@ -23,6 +23,8 @@ def similarity(a, b):
         from sentence_transformers import util
 
         model = get_model()
+        if model is None:
+            return 0.0
         e1 = model.encode(a, normalize_embeddings=True)
         e2 = model.encode(b, normalize_embeddings=True)
         return util.cos_sim(e1, e2).item()
@@ -55,3 +57,5 @@ def is_keyword_spam(text):
         return True
 
     return False
+
+
