@@ -5,25 +5,31 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        print("⚡ Loading embedding model...")
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        try:
+            print("⚡ Loading embedding model...")
+            from sentence_transformers import SentenceTransformer
+            _model = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception as e:
+            print(f"❌ Model load failed: {e}")
+            _model = None
     return _model
-
 
 def split_sentences(text):
     sentences = re.split(r"[.!?]\s+", text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
 
-
 def similarity(a, b):
-    from sentence_transformers import util  # 👈 moved inside
+    try:
+        from sentence_transformers import util
 
-    model = get_model()
-    e1 = model.encode(a, normalize_embeddings=True)
-    e2 = model.encode(b, normalize_embeddings=True)
-    return util.cos_sim(e1, e2).item()
+        model = get_model()
+        e1 = model.encode(a, normalize_embeddings=True)
+        e2 = model.encode(b, normalize_embeddings=True)
+        return util.cos_sim(e1, e2).item()
 
+    except Exception as e:
+        print(f"⚠️ Similarity error: {e}")
+        return 0.0  # fallback instead of crash
 
 def is_keyword_spam(text):
     words = text.lower().split()
